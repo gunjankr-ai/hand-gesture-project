@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Hand Gesture Recognition</title>
+
+    <!-- TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+
+    <!-- Teachable Machine Image Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 30px;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background: #f4f6f8;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+            color: #222;
+        }
+
+        p {
+            color: #555;
+            font-size: 18px;
+        }
+
+        #webcam-container {
+            margin: 25px auto;
+            display: flex;
+            justify-content: center;
+        }
+
+        #webcam-container canvas {
+            width: 400px;
+            height: 400px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        #label-container {
+            width: 400px;
+            max-width: 100%;
+            margin: 20px auto;
+        }
+
+        .prediction {
+            margin: 10px 0;
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        #status {
+            margin: 15px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+
+<body>
+
+    <h1>🤖 Hand Gesture Recognition</h1>
+
+    <p>
+        Show your hand gesture in front of the camera
+    </p>
+
+    <div id="status">
+        Loading model...
+    </div>
+
+    <!-- Webcam -->
+    <div id="webcam-container"></div>
+
+    <!-- Predictions -->
+    <div id="label-container"></div>
+
+
+    <script>
+
+        // =====================================================
+        // 1. YOUR TEACHABLE MACHINE MODEL URL
+        // =====================================================
+
+        const MODEL_URL =
+            "https://teachablemachine.withgoogle.com/models/EjGESgVdm/";
+
+
+        // =====================================================
+        // 2. VARIABLES
+        // =====================================================
+
+        let model;
+        let webcam;
+        let labelContainer;
+        let maxPredictions;
+
+
+        // =====================================================
+        // 3. INITIALIZE APPLICATION
+        // =====================================================
+
+        async function init() {
+
+            try {
+
+                document.getElementById("status").innerText =
+                    "Loading AI model...";
+
+
+                // Model files
+                const modelURL =
+                    MODEL_URL + "model.json";
+
+                const metadataURL =
+                    MODEL_URL + "metadata.json";
+
+
+                // Load Teachable Machine model
+                model = await tmImage.load(
+                    modelURL,
+                    metadataURL
+                );
+
+
+                // Number of classes
+                maxPredictions =
+                    model.getTotalClasses();
+
+
+                // =================================================
+                // 4. START WEBCAM
+                // =================================================
+
+                webcam = new tmImage.Webcam(
+                    400,
+                    400,
+                    true
+                );
+
+
+                await webcam.setup();
+
+                await webcam.play();
+
+
+                // Add webcam to webpage
+                document
+                    .getElementById("webcam-container")
+                    .appendChild(webcam.canvas);
+
+
+                // =================================================
+                // 5. CREATE PREDICTION BOXES
+                // =================================================
+
+                labelContainer =
+                    document.getElementById(
+                        "label-container"
+                    );
+
+
+                for (
+                    let i = 0;
+                    i < maxPredictions;
+                    i++
+                ) {
+
+                    const div =
+                        document.createElement("div");
+
+                    div.className = "prediction";
+
+                    labelContainer.appendChild(div);
+                }
+
+
+                document.getElementById("status").innerText =
+                    "✅ Camera is ready! Show a gesture.";
+
+
+                // Start prediction loop
+                window.requestAnimationFrame(loop);
+
+            }
+
+            catch (error) {
+
+                console.error(error);
+
+                document.getElementById("status").innerText =
+                    "❌ Camera or model could not be loaded.";
+
+                alert(
+                    "Camera access failed. Please allow camera permission and refresh the page."
+                );
+            }
+        }
+
+
+        // =====================================================
+        // 6. CONTINUOUS LOOP
+        // =====================================================
+
+        async function loop() {
+
+            webcam.update();
+
+            await predict();
+
+            window.requestAnimationFrame(loop);
+        }
+
+
+        // =====================================================
+        // 7. MAKE PREDICTION
+        // =====================================================
+
+        async function predict() {
+
+            const predictions =
+                await model.predict(
+                    webcam.canvas
+                );
+
+
+            for (
+                let i = 0;
+                i < maxPredictions;
+                i++
+            ) {
+
+                const className =
+                    predictions[i].className;
+
+
+                const probability =
+                    (
+                        predictions[i].probability * 100
+                    ).toFixed(1);
+
+
+                labelContainer
+                    .childNodes[i]
+                    .innerText =
+                    `${className}: ${probability}%`;
+            }
+        }
+
+
+        // =====================================================
+        // 8. START APPLICATION
+        // =====================================================
+
+        init();
+
+    </script>
+
+</body>
+
+</html>
